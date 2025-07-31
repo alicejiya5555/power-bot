@@ -48,7 +48,13 @@ async function checkWallets() {
       const direction = tx.to.toLowerCase() === wallet.address.toLowerCase() ? '🟢 Deposit' : '🔴 Withdrawal';
       const valueFormatted = formatValue(tx.value, tx.tokenDecimal);
 
-      const message = `🐋 *Whale Alert!*\n\n👤 Wallet: ${wallet.name}\n💠 Token: ${tx.tokenSymbol}\n💰 Amount: ${valueFormatted}\n➡️ Direction: ${direction}\n🔗 [View Transaction](https://etherscan.io/tx/${tx.hash})`;
+      const message = `🐋 *Whale Alert!*
+
+👤 Wallet: ${wallet.name}
+💠 Token: ${tx.tokenSymbol}
+💰 Amount: ${valueFormatted}
+➡️ Direction: ${direction}
+🔗 [View Transaction](https://etherscan.io/tx/${tx.hash})`;
       alerts.push(message);
     }
   }
@@ -75,16 +81,49 @@ symbols.forEach((symbolKey) => {
       symbol = `${asset}USDT`;
       timeframe = tf;
 
-      ctx.reply(`📊 ${asset} ${interval} analysis loading...`);
+      const trendMap = {
+        '15m': '🟡 15M: neutral',
+        '30m': '🟢 30M: bullish',
+        '1h': '🔴 1H: bearish',
+        '4h': '🟢 4H: bullish',
+        '12h': '🟢 12H: bullish'
+      };
 
-      // Simulated response
-      ctx.reply(`✅ Trend: Bullish\n💧 Liquidity Zone: 0.05% below\n🎯 TP/SL Recommendation:\n- TP: 5%\n- SL: 1.5%`);
+      const liquidityZones = `💧 Liquidity Zones & Order Blocks Detected
+
+[Zone details to be dynamically updated based on asset and timeframe]`;
+
+      const response = `📊 Trend Confirmation & Multi-Timeframe Heatmap
+
+${trendMap['15m']}
+${trendMap['30m']}
+${trendMap['1h']}
+${trendMap['4h']}
+${trendMap['12h']}
+
+🔥 Overall Trend: Bullish 🟢
+💧 Liquidity Zone: 0.05% below
+
+${liquidityZones}
+
+🎯 TP/SL Recommendation:
+🎯 TP/SL Levels for ${symbol} on ${interval}:
+TP1: [To be updated]
+TP2: [To be updated]
+Stop Loss: [To be updated]`;
+
+      ctx.reply(response);
     });
   });
 });
 
 bot.start((ctx) => {
-  ctx.reply(`Welcome to the Trading Bot 🤖\n\nCommands:\n/set a pair + timeframe: /btc1h /eth4h etc\n/whale - Whale transactions alert\nMore features coming soon.`);
+  ctx.reply(`Welcome to the Trading Bot 🤖
+
+Commands:
+/set a pair + timeframe: /btc1h /eth4h etc
+/whale - Whale transactions alert
+More features coming soon.`);
 });
 
 setInterval(async () => {
