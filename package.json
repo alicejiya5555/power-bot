@@ -1,15 +1,24 @@
 {
   "name": "unified-trading-helper-bot",
   "version": "1.0.0",
-  "description": "Telegram bot combining whale tracking, trend confirmation, liquidity zones, and TP/SL optimization",
+  "description": "A unified Telegram bot for whale alerts, trend confirmation, liquidity zones, and TP/SL optimization.",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
+  "keywords": [
+    "telegram-bot",
+    "crypto",
+    "whale-tracking",
+    "trend-analysis",
+    "liquidity-zones",
+    "tp-sl-optimization"
+  ],
+  "author": "Ronaldo the Wise",
+  "license": "ISC",
   "dependencies": {
-    "axios": "^1.6.0",
-    "dotenv": "^16.4.0",
-    "telegraf": "^4.12.2",
-    "express": "^4.18.2"
+    "axios": "^1.6.8",
+    "dotenv": "^16.3.1",
+    "telegraf": "^4.16.2"
   }
 }
