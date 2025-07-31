@@ -1,6 +1,10 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
+const express = require('express');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const CHAT_ID = process.env.CHAT_ID;
@@ -329,6 +333,15 @@ setInterval(async () => {
 //     await bot.telegram.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' });
 //   }
 // }, 30 * 60 * 1000);
+
+// Start Express server to keep bot alive and respond to pings
+app.get('/', (_req, res) => {
+  res.send('🤖 Unified Trading Helper Bot is alive and watching markets.');
+});
+
+app.listen(PORT, () => {
+  console.log(`🌐 Express server running on port ${PORT}`);
+});
 
 bot.launch();
 console.log('🤖 Unified Trading Helper Bot is running...');
