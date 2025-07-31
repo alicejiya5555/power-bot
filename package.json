@@ -1,25 +1,16 @@
 {
-  "name": "unified-trading-bot",
+  "name": "trend-intelligence-bot",
   "version": "1.0.0",
-  "description": "A unified Telegram bot for whale alerts, liquidity zones, trend confirmation, and trading signals",
+  "description": "Crypto trend analyzer bot for Telegram - by Mr Ronaldo",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
-  "keywords": [
-    "telegram",
-    "bot",
-    "crypto",
-    "whale",
-    "trend",
-    "liquidity",
-    "order-blocks"
-  ],
-  "author": "Ronaldo",
-  "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.8",
+    "axios": "^1.6.7",
     "dotenv": "^16.4.5",
-    "telegraf": "^4.16.2"
-  }
+    "telegraf": "^4.12.3"
+  },
+  "author": "Mr Ronaldo",
+  "license": "ISC"
 }
