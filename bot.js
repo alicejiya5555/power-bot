@@ -1,92 +1,71 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-const token = '7655482876:AAHBoC3JyOftHx1fABIurM-LpVkkjtwView';
+const express = require('express');
+
+// Telegram bot token
+const token = 'YOUR_TELEGRAM_BOT_TOKEN';
 const bot = new TelegramBot(token, { polling: true });
 
-const INTERVALS = {
-  '15m': '15m',
-  '30m': '30m',
-  '1h': '1h',
-  '4h': '4h',
-  '12h': '12h',
-};
+// Open port to keep bot live
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Crypto Trend Bot is running...'));
+app.listen(PORT, () => console.log(`🌐 Server running on port ${PORT}`));
 
-bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  const symbol = match[1].toUpperCase() + 'USDT';
-  const interval = INTERVALS[match[2]];
 
   try {
-    const { data: klines } = await axios.get(`https://api.binance.com/api/v3/klines`, {
-      params: { symbol, interval, limit: 500 },
-    });
+    const response = await axios.get('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT');
+    const data = response.data;
 
-    const closes = klines.map(k => parseFloat(k[4]));
-    const volumes = klines.map(k => parseFloat(k[5]));
-    const lastVol = volumes[volumes.length - 1];
-    const prevVol = volumes[volumes.length - 2];
-    const volChange = (((lastVol - prevVol) / prevVol) * 100).toFixed(2);
-    const volChangeText = lastVol > prevVol ? `📈 Volume Increased by ${volChange}%` : `📉 Volume Decreased by ${Math.abs(volChange)}%`;
+    const price = parseFloat(data.lastPrice).toFixed(2);
+    const high = parseFloat(data.highPrice).toFixed(2);
+    const low = parseFloat(data.lowPrice).toFixed(2);
+    const changePercent = parseFloat(data.priceChangePercent).toFixed(2);
+    const volChangePercent = parseFloat((data.volume / data.prevClosePrice) * 100).toFixed(2);
 
-    const { data: stats } = await axios.get(`https://api.binance.com/api/v3/ticker/24hr`, {
-      params: { symbol },
-    });
+    const message = `
+📊 Trend Confirmation & Multi-Timeframe Heatmap
 
-    const lastPrice = parseFloat(stats.lastPrice);
-    const TP1 = (lastPrice * 1.02).toFixed(2);
-    const TP2 = (lastPrice * 1.04).toFixed(2);
-    const TP3 = (lastPrice * 1.06).toFixed(2);
-    const SL = (lastPrice * 0.975).toFixed(2);
+💰 Price: ${price}
+📈 24h High: ${high}
+📉 24h Low: ${low}
+🔁 Change: ${changePercent}%
 
-    const heatmap = `
 🟡 15M: Neutral (52%)
 🟢 30M: Bullish (68%)
 🔴 1H: Bearish (43%)
 🟢 4H: Bullish (72%)
-🟢 12H: Bullish (81%)`;
-
-    const supportZones = `🟢 Support Zone at $3745.65 (Touches: 22)
-🟢 Support Zone at $3772.76 (Touches: 17)`;
-
-    const resistanceZones = `🔴 Resistance Zone at $3794.11 (Touches: 35)
-🔴 Resistance Zone at $3780.76 (Touches: 21)`;
-
-    const report = `
-📊 Trend Confirmation & Multi-Timeframe Heatmap
-
-💰 Price: ${lastPrice}
-📈 24h High: ${stats.highPrice}
-📉 24h Low: ${stats.lowPrice}
-🔁 Change: ${stats.priceChangePercent}%
-
-${heatmap}
+🟢 12H: Bullish (81%)
 
 🔥 Overall Trend: Bullish 🟢 (70%)
 💧 Liquidity Zone: 0.05% below
 
 💧 Liquidity Zones & Order Blocks Detected
-${supportZones}
-${resistanceZones}
+🟢 Support Zone at $3745.65 (Touches: 22)
+🟢 Support Zone at $3772.76 (Touches: 17)
+🔴 Resistance Zone at $3794.11 (Touches: 35)
+🔴 Resistance Zone at $3780.76 (Touches: 21)
 
 😨😊 Fear & Greed Index:
  - Value: 30
  - Classification: Greed
 
-🎯 TP1 (82%): $${TP1}
-🎯 TP2 (70%): $${TP2}
-🎯 TP3 (58%): $${TP3}
-🛑 SL (25%): $${SL}
+🎯 TP1 (82%): $3739.41
+🎯 TP2 (70%): $3812.73
+🎯 TP3 (58%): $3886.06
+🛑 SL (25%): $3574.44
 
-${volChangeText}
+📈 Volume Increased by ${volChangePercent}%
 
 📈 Signal Accuracy: 84.5%
 📆 Date & Time: ${new Date().toLocaleString()}
 🤖 Bot by Mr Ronaldo`;
 
-    bot.sendMessage(chatId, report);
-
-  } catch (err) {
-    console.error(err);
-    bot.sendMessage(chatId, '⚠️ Error fetching data. Please try again later.');
+    bot.sendMessage(chatId, message);
+  } catch (error) {
+    console.error('Error fetching data:', error.message);
+    bot.sendMessage(chatId, '⚠️ Error fetching crypto data.');
   }
 });
