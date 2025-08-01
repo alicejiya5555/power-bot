@@ -1,16 +1,14 @@
 {
-  "name": "crypto-analysis-bot",
+  "name": "crypto-signal-bot",
   "version": "1.0.0",
-  "description": "Telegram bot for crypto trend confirmation and indicator analysis",
+  "description": "Telegram bot to fetch Binance indicators and trend signals",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
     "axios": "^1.6.8",
-    "dotenv": "^16.3.1",
-    "express": "^4.19.2",
     "node-telegram-bot-api": "^0.61.0",
-    "technicalindicators": "^4.0.3"
+    "technicalindicators": "^3.0.2"
   }
 }
