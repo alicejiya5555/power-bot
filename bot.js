@@ -1,26 +1,7 @@
-// bot.js
-
-const express = require('express');
-const bodyParser = require('body-parser');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-
 const token = '7655482876:AAHBoC3JyOftHx1fABIurM-LpVkkjtwView';
-const url = 'https://power-bot-x2ww.onrender.com'; // 🌐 Replace with your live domain (e.g., from Render or Railway)
-
-const bot = new TelegramBot(token);
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.use(bodyParser.json());
-
-// Set webhook
-bot.setWebHook(`${url}/bot${token}`);
-
-app.post(`/bot${token}`, (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
-});
+const bot = new TelegramBot(token, { polling: true });
 
 const INTERVALS = {
   '15m': '15m',
@@ -45,9 +26,7 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
     const lastVol = volumes[volumes.length - 1];
     const prevVol = volumes[volumes.length - 2];
     const volChange = (((lastVol - prevVol) / prevVol) * 100).toFixed(2);
-    const volChangeText = lastVol > prevVol
-      ? `📈 Volume Increased by ${volChange}%`
-      : `📉 Volume Decreased by ${Math.abs(volChange)}%`;
+    const volChangeText = lastVol > prevVol ? `📈 Volume Increased by ${volChange}%` : `📉 Volume Decreased by ${Math.abs(volChange)}%`;
 
     const { data: stats } = await axios.get(`https://api.binance.com/api/v3/ticker/24hr`, {
       params: { symbol },
@@ -66,11 +45,11 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
 🟢 4H: Bullish (72%)
 🟢 12H: Bullish (81%)`;
 
-    const supportZones = `🟢 Support Zone at $3745.6523 (Touches: 22)
-🟢 Support Zone at $3772.7635 (Touches: 17)`;
+    const supportZones = `🟢 Support Zone at $3745.65 (Touches: 22)
+🟢 Support Zone at $3772.76 (Touches: 17)`;
 
-    const resistanceZones = `🔴 Resistance Zone at $3794.1123 (Touches: 35)
-🔴 Resistance Zone at $3780.7652 (Touches: 21)`;
+    const resistanceZones = `🔴 Resistance Zone at $3794.11 (Touches: 35)
+🔴 Resistance Zone at $3780.76 (Touches: 21)`;
 
     const report = `
 📊 Trend Confirmation & Multi-Timeframe Heatmap
@@ -110,8 +89,4 @@ ${volChangeText}
     console.error(err);
     bot.sendMessage(chatId, '⚠️ Error fetching data. Please try again later.');
   }
-});
-
-app.listen(port, () => {
-  console.log(`🚀 Server is running on port ${port}`);
 });
