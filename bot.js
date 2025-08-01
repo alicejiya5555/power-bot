@@ -1,10 +1,10 @@
+// bot.js
+
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-const token = '7655482876:AAFly1nRiuaXxUvoFVJS5Q1tXr0AZaMWlek'; // Replace this
-
+const token = '7655482876:AAHBoC3JyOftHx1fABIurM-LpVkkjtwView';
 const bot = new TelegramBot(token, { polling: true });
 
-const ASSETS = ['BTCUSDT', 'ETHUSDT', 'LINKUSDT', 'BNBUSDT'];
 const INTERVALS = {
   '15m': '15m',
   '30m': '30m',
@@ -25,10 +25,10 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
 
     const closes = klines.map(k => parseFloat(k[4]));
     const volumes = klines.map(k => parseFloat(k[5]));
-    const lastVol = volumes.at(-1);
-    const prevVol = volumes.at(-2);
+    const lastVol = volumes[volumes.length - 1];
+    const prevVol = volumes[volumes.length - 2];
     const volChange = (((lastVol - prevVol) / prevVol) * 100).toFixed(2);
-    const volChangeText = lastVol > prevVol ? `📈 Increased by ${volChange}%` : `📉 Decreased by ${Math.abs(volChange)}%`;
+    const volChangeText = lastVol > prevVol ? `📈 Volume Increased by ${volChange}%` : `📉 Volume Decreased by ${Math.abs(volChange)}%`;
 
     const { data: stats } = await axios.get(`https://api.binance.com/api/v3/ticker/24hr`, {
       params: { symbol },
@@ -45,15 +45,12 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
 🟢 30M: Bullish (68%)
 🔴 1H: Bearish (43%)
 🟢 4H: Bullish (72%)
-🟢 12H: Bullish (81%)
-`;
+🟢 12H: Bullish (81%)`;
 
     const supportZones = `🟢 Support Zone at $3745.6523 (Touches: 22)
-🟢 Support Zone at $3772.7635 (Touches: 17)
-🟢 Support Zone at $3798.1750 (Touches: 12)`;
+🟢 Support Zone at $3772.7635 (Touches: 17)`;
 
-    const resistanceZones = `🔴 Resistance Zone at $3769.7642 (Touches: 12)
-🔴 Resistance Zone at $3794.1123 (Touches: 35)
+    const resistanceZones = `🔴 Resistance Zone at $3794.1123 (Touches: 35)
 🔴 Resistance Zone at $3780.7652 (Touches: 21)`;
 
     const report = `
@@ -63,12 +60,9 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
 📈 24h High: ${stats.highPrice}
 📉 24h Low: ${stats.lowPrice}
 🔁 Change: ${stats.priceChangePercent}%
-🧮 Volume: ${stats.volume}
-🧮 Volume Change: ${volChangeText}
-💵 Quote Volume: ${stats.quoteVolume}
-🔓 Open Price: ${stats.openPrice}
-⏰ Close Time: ${new Date(stats.closeTime).toLocaleString()}
+
 ${heatmap}
+
 🔥 Overall Trend: Bullish 🟢 (70%)
 💧 Liquidity Zone: 0.05% below
 
@@ -85,10 +79,11 @@ ${resistanceZones}
 🎯 TP3 (58%): $${TP3}
 🛑 SL (25%): $${SL}
 
+${volChangeText}
+
 📈 Signal Accuracy: 84.5%
 📆 Date & Time: ${new Date().toLocaleString()}
-🤖 Bot by Mr Ronaldo
-`;
+🤖 Bot by Mr Ronaldo`;
 
     bot.sendMessage(chatId, report);
 
