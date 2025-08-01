@@ -1,15 +1,22 @@
 {
-  "name": "telegram-bot-webhook",
+  "name": "crypto-trend-bot",
   "version": "1.0.0",
-  "description": "Crypto trend Telegram bot with webhook support",
+  "description": "Telegram bot that fetches Binance crypto data and displays technical trend summaries.",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "body-parser": "^1.20.2",
-    "express": "^4.18.2",
     "node-telegram-bot-api": "^0.61.0"
-  }
+  },
+  "keywords": [
+    "telegram",
+    "crypto",
+    "binance",
+    "trend-analysis",
+    "trading-bot"
+  ],
+  "author": "Mr Ronaldo",
+  "license": "MIT"
 }
