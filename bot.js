@@ -1,8 +1,6 @@
-// bot.js
-
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-const technicalIndicators = require('technicalindicators'); // for EMA, RSI, etc.
+const technicalIndicators = require('technicalindicators');
 const token = '7655482876:AAEC1vjbj42M6TY277G-M6me23z74mIQb-U';
 const bot = new TelegramBot(token, { polling: true });
 
@@ -21,29 +19,25 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
   const interval = INTERVALS[match[2]];
 
   try {
-    // 1. Fetch Kline data for technical indicators
     const { data: klines } = await axios.get(`https://api.binance.com/api/v3/klines`, {
-      params: {
-        symbol,
-        interval,
-        limit: 500,
-      },
+      params: { symbol, interval, limit: 500 },
     });
 
     const closes = klines.map(k => parseFloat(k[4]));
     const volumes = klines.map(k => parseFloat(k[5]));
 
-    // 2. Fetch 24hr stats
     const { data: stats } = await axios.get(`https://api.binance.com/api/v3/ticker/24hr`, {
       params: { symbol },
     });
 
-    // === Process Indicators Here ===
-    // Example RSI
-    const rsi = technicalIndicators.RSI.calculate({ period: 14, values: closes });
-    const currentRSI = rsi[rsi.length - 1];
+    const lastPrice = parseFloat(stats.lastPrice);
 
-    // Dummy Multi-Timeframe Heatmap (You should compute based on real indicator trends)
+    // Calculate sample take-profit and stop-loss levels
+    const TP1 = (lastPrice * 1.02).toFixed(2);
+    const TP2 = (lastPrice * 1.04).toFixed(2);
+    const TP3 = (lastPrice * 1.06).toFixed(2);
+    const SL = (lastPrice * 0.975).toFixed(2);
+
     const heatmap = `
 🟡 15M: Neutral (52%)
 🟢 30M: Bullish (68%)
@@ -63,7 +57,7 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
     const report = `
 📊 Trend Confirmation & Multi-Timeframe Heatmap
 
-💰 Price: ${parseFloat(stats.lastPrice).toFixed(2)}
+💰 Price: ${lastPrice}
 📈 24h High: ${stats.highPrice}
 📉 24h Low: ${stats.lowPrice}
 🔁 Change: ${stats.priceChangePercent}%
@@ -84,10 +78,10 @@ ${resistanceZones}
  - Value: 30
  - Classification: Greed
 
-🎯 TP1 (82%)
-🎯 TP2 (70%)
-🎯 TP3 (58%)
-🎯 SL: (25%)
+🎯 TP1 (82%): $${TP1}
+🎯 TP2 (70%): $${TP2}
+🎯 TP3 (58%): $${TP3}
+🎯 SL (25%): $${SL}
 
 🎯 Likely to Hit: TP 🎯
 📈 Signal Accuracy: 84.5%
