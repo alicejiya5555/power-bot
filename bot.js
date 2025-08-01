@@ -1,7 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-const technicalIndicators = require('technicalindicators');
-const token = '7655482876:AAEC1vjbj42M6TY277G-M6me23z74mIQb-U';
+const token = '7655482876:AAFly1nRiuaXxUvoFVJS5Q1tXr0AZaMWlek'; // Replace this
+
 const bot = new TelegramBot(token, { polling: true });
 
 const ASSETS = ['BTCUSDT', 'ETHUSDT', 'LINKUSDT', 'BNBUSDT'];
@@ -25,14 +25,16 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
 
     const closes = klines.map(k => parseFloat(k[4]));
     const volumes = klines.map(k => parseFloat(k[5]));
+    const lastVol = volumes.at(-1);
+    const prevVol = volumes.at(-2);
+    const volChange = (((lastVol - prevVol) / prevVol) * 100).toFixed(2);
+    const volChangeText = lastVol > prevVol ? `📈 Increased by ${volChange}%` : `📉 Decreased by ${Math.abs(volChange)}%`;
 
     const { data: stats } = await axios.get(`https://api.binance.com/api/v3/ticker/24hr`, {
       params: { symbol },
     });
 
     const lastPrice = parseFloat(stats.lastPrice);
-
-    // Calculate sample take-profit and stop-loss levels
     const TP1 = (lastPrice * 1.02).toFixed(2);
     const TP2 = (lastPrice * 1.04).toFixed(2);
     const TP3 = (lastPrice * 1.06).toFixed(2);
@@ -62,7 +64,7 @@ bot.onText(/\/(link|eth|btc|bnb)(15m|30m|1h|4h|12h)/i, async (msg, match) => {
 📉 24h Low: ${stats.lowPrice}
 🔁 Change: ${stats.priceChangePercent}%
 🧮 Volume: ${stats.volume}
-🧮 Volume Change: N/A
+🧮 Volume Change: ${volChangeText}
 💵 Quote Volume: ${stats.quoteVolume}
 🔓 Open Price: ${stats.openPrice}
 ⏰ Close Time: ${new Date(stats.closeTime).toLocaleString()}
@@ -81,9 +83,8 @@ ${resistanceZones}
 🎯 TP1 (82%): $${TP1}
 🎯 TP2 (70%): $${TP2}
 🎯 TP3 (58%): $${TP3}
-🎯 SL (25%): $${SL}
+🛑 SL (25%): $${SL}
 
-🎯 Likely to Hit: TP 🎯
 📈 Signal Accuracy: 84.5%
 📆 Date & Time: ${new Date().toLocaleString()}
 🤖 Bot by Mr Ronaldo
