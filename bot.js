@@ -62,8 +62,14 @@ const calculateIndicators = (candles) => {
     signalPeriod: 3
   });
   const adx = technicalIndicators.ADX.calculate({ high: highs, low: lows, close: closes, period: 14 });
+  const williamsR = technicalIndicators.WilliamsR.calculate({ high: highs, low: lows, close: closes, period: 14 });
+  const obv = technicalIndicators.OBV.calculate({ close: closes, volume: volumes });
+  const cci = technicalIndicators.CCI.calculate({ high: highs, low: lows, close: closes, period: 20 });
+  const roc = technicalIndicators.ROC.calculate({ period: 12, values: closes });
+  const momentum = technicalIndicators.MOM.calculate({ period: 10, values: closes });
+  const ultosc = technicalIndicators.UltimateOscillator.calculate({ high: highs, low: lows, close: closes });
 
-  return { sma, ema, rsi, macd, stochastic, adx };
+  return { sma, ema, rsi, macd, stochastic, adx, williamsR, obv, cci, roc, momentum, ultosc };
 };
 
 const detectTrend = (candles) => {
