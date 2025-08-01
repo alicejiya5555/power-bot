@@ -10,7 +10,7 @@ const app = express();
 
 app.use(cors());
 
-// Supported commands and symbols mapping
+// Mapping symbols to Binance pairs
 const symbolsMap = {
   eth: 'ETHUSDT',
   btc: 'BTCUSDT',
@@ -19,10 +19,10 @@ const symbolsMap = {
   trx: 'TRXUSDT'
 };
 
-// Supported timeframes Binance allows: 5m, 15m, 30m, 1h, 4h, 1d
-const timeFrames = ['5m', '15m', '30m', '1h', '4h', '1d'];
+// Valid intervals for commands
+const validIntervals = ['15m', '30m', '1h', '4h', '6h', '12h', '24h'];
 
-// Helper: get Binance klines for symbol and interval
+// Fetch Binance klines
 async function getKlines(symbol, interval, limit = 100) {
   try {
     const url = `${process.env.BINANCE_API}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
@@ -42,10 +42,8 @@ async function getKlines(symbol, interval, limit = 100) {
   }
 }
 
-// Fear & Greed Index (mocked for example - real API can be integrated)
+// Mock Fear & Greed Index (can be replaced with real API)
 async function getFearGreed() {
-  // Placeholder - you can integrate from https://alternative.me/crypto/fear-and-greed-index/
-  // For now, random or fixed
   const value = Math.floor(Math.random() * 101);
   let classification = 'Neutral';
   if (value < 25) classification = 'Extreme Fear';
@@ -55,9 +53,8 @@ async function getFearGreed() {
   return { value, classification };
 }
 
-// Calculate simple indicators for trend confirmation and signals
+// Calculate indicators
 function calculateIndicators(closes) {
-  // Using technicalindicators lib
   const sma20 = technicalIndicators.SMA.calculate({ period: 20, values: closes });
   const sma50 = technicalIndicators.SMA.calculate({ period: 50, values: closes });
   const rsi = technicalIndicators.RSI.calculate({ period: 14, values: closes });
@@ -69,11 +66,10 @@ function calculateIndicators(closes) {
     SimpleMAOscillator: false,
     SimpleMASignal: false
   });
-
   return { sma20, sma50, rsi, macd };
 }
 
-// Analyze trend based on indicators and price
+// Analyze trend
 function analyzeTrend(closes, indicators) {
   const latestClose = closes[closes.length - 1];
   const latestSMA20 = indicators.sma20[indicators.sma20.length - 1];
@@ -81,21 +77,19 @@ function analyzeTrend(closes, indicators) {
   const latestRSI = indicators.rsi[indicators.rsi.length - 1];
   const latestMACD = indicators.macd[indicators.macd.length - 1];
 
-  // Trend logic: SMA20 above SMA50 = bullish, else bearish
   let overallTrend = 'Down';
   let trendPercentage = 40;
 
   if (latestSMA20 && latestSMA50) {
     if (latestSMA20 > latestSMA50) {
       overallTrend = 'Up';
-      trendPercentage = 70 + (latestRSI > 50 ? 10 : 0); // Boost if RSI > 50
+      trendPercentage = 70 + (latestRSI > 50 ? 10 : 0);
     } else {
       overallTrend = 'Down';
       trendPercentage = 70 - (latestRSI > 50 ? 10 : 0);
     }
   }
 
-  // Signal accuracy estimated by MACD histogram positive/negative
   let signalAccuracy = 60;
   if (latestMACD) {
     signalAccuracy = latestMACD.MACD > latestMACD.signal ? 75 : 40;
@@ -109,9 +103,8 @@ function analyzeTrend(closes, indicators) {
   };
 }
 
-// Support & Resistance mock (using recent lows and highs)
+// Calculate support and resistance
 function calculateSupportResistance(klines) {
-  // Simple approach: last 20 lows and highs
   const lows = klines.slice(-20).map(k => k.low);
   const highs = klines.slice(-20).map(k => k.high);
 
@@ -121,50 +114,46 @@ function calculateSupportResistance(klines) {
   return { support, resistance };
 }
 
-// Calculate percentage difference helper
+// Percentage difference helper
 function percentageDifference(current, target) {
   return (((target - current) / current) * 100).toFixed(2);
 }
 
-// Format date & time
+// Format UTC date and time
 function formatDateTime(ts) {
   return new Date(ts).toLocaleString('en-GB', { timeZone: 'UTC' });
 }
 
-// Main function to handle command
+// Main command handler
 async function handleCommand(ctx, symbolKey, timeframe = '1h') {
   const symbol = symbolsMap[symbolKey.toLowerCase()];
   if (!symbol) {
-    ctx.reply('Unsupported symbol. Use /eth /btc /link /bnb /trx');
+    ctx.reply('Unsupported symbol. Use commands like /eth15m, /btc4h, /link1h, /trx12h, /bnb24h');
     return;
   }
 
-  if (!timeFrames.includes(timeframe)) {
-    ctx.reply(`Unsupported timeframe. Use one of: ${timeFrames.join(', ')}`);
+  if (!validIntervals.includes(timeframe)) {
+    ctx.reply(`Unsupported timeframe. Valid options: ${validIntervals.join(', ')}`);
     return;
   }
 
   ctx.reply(`Fetching ${symbol} data for timeframe ${timeframe}...`);
 
-  const klines = await getKlines(symbol, timeframe);
+  const klines = await getKlines(symbol, timeframe, 100);
   if (!klines) {
     ctx.reply('Failed to fetch market data. Please try again later.');
     return;
   }
 
   const closes = klines.map(k => k.close);
-
-  // Calculate indicators
   const indicators = calculateIndicators(closes);
   const trendAnalysis = analyzeTrend(closes, indicators);
   const { support, resistance } = calculateSupportResistance(klines);
   const fearGreed = await getFearGreed();
 
-  // Calculate percentages for support/resistance and take profits/sl
   const supportDiffPercent = percentageDifference(trendAnalysis.latestClose, support);
   const resistanceDiffPercent = percentageDifference(trendAnalysis.latestClose, resistance);
 
-  // Define TP and SL - simple logic: TP1 = resistance, TP2 = resistance + 2%
   const tp1 = resistance;
   const tp2 = resistance * 1.02;
   const sl = support;
@@ -173,8 +162,6 @@ async function handleCommand(ctx, symbolKey, timeframe = '1h') {
   const tp2DiffPercent = percentageDifference(trendAnalysis.latestClose, tp2);
   const slDiffPercent = percentageDifference(trendAnalysis.latestClose, sl);
 
-  // Count old touches (how many times price touched support or resistance)
-  // Simple mock: count number of candles where low <= support + small margin, similarly for resistance
   const supportTouches = klines.filter(k => k.low <= support * 1.001).length;
   const resistanceTouches = klines.filter(k => k.high >= resistance * 0.999).length;
 
@@ -182,9 +169,9 @@ async function handleCommand(ctx, symbolKey, timeframe = '1h') {
 
 💰 Price: $${trendAnalysis.latestClose.toFixed(4)}
 🔥 Overall Trend: ${trendAnalysis.overallTrend} (${trendAnalysis.trendPercentage}%)
-Next Support: $${support.toFixed(4)} (${supportDiffPercent}% away, touched ${supportTouches} times)
-Next Resistance: $${resistance.toFixed(4)} (${resistanceDiffPercent}% away, touched ${resistanceTouches} times)
-Fear & Greed Index: ${fearGreed.value} (${fearGreed.classification})
+🟢Next Support: $${support.toFixed(4)} (${supportDiffPercent}% away, touched ${supportTouches} times)
+🔴Next Resistance: $${resistance.toFixed(4)} (${resistanceDiffPercent}% away, touched ${resistanceTouches} times)
+🤑Fear & Greed Index: ${fearGreed.value} (${fearGreed.classification})
 🎯 TP1: $${tp1.toFixed(4)} (${tp1DiffPercent}% away)
 🎯 TP2: $${tp2.toFixed(4)} (${tp2DiffPercent}% away)
 🛑 SL: $${sl.toFixed(4)} (${slDiffPercent}% away)
@@ -195,22 +182,29 @@ Fear & Greed Index: ${fearGreed.value} (${fearGreed.classification})
   ctx.reply(message);
 }
 
-// Telegram command handlers with optional timeframe param e.g. /eth 5m
-bot.command(['eth', 'btc', 'link', 'bnb', 'trx'], async ctx => {
+// Listen to commands with symbol + timeframe fused, e.g. /eth15m
+bot.on('text', async (ctx) => {
   try {
-    const messageText = ctx.message.text.trim();
-    const parts = messageText.split(' ');
-    const command = parts[0].replace('/', '').toLowerCase();
-    const timeframe = parts[1] ? parts[1].toLowerCase() : '1h';
+    const text = ctx.message.text.toLowerCase().trim();
 
-    await handleCommand(ctx, command, timeframe);
+    const match = text.match(/^\/(eth|btc|link|bnb|trx)(15m|30m|1h|4h|6h|12h|24h)?$/);
+
+    if (!match) {
+      return ctx.reply('Invalid command format.\nUse commands like /eth15m, /btc4h, /link1h, /trx12h, /bnb24h');
+    }
+
+    const symbolKey = match[1];
+    const timeframe = match[2] || '1h';
+
+    await handleCommand(ctx, symbolKey, timeframe);
+
   } catch (error) {
     console.error('Error handling command:', error);
     ctx.reply('An error occurred. Please try again later.');
   }
 });
 
-// Simple Express server to keep bot alive and open port for webhook if needed
+// Express server to keep bot alive
 app.get('/', (req, res) => {
   res.send('Crypto Trend Bot by Mr Ronaldo is running...');
 });
@@ -221,6 +215,6 @@ app.listen(process.env.PORT, () => {
   console.log('Telegram bot launched');
 });
 
-// Graceful stop
+// Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
