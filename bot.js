@@ -1,21 +1,36 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-const technicalIndicators = require('technicalindicators');
 const express = require('express');
+
+const {
+  SMA,
+  EMA,
+  RSI,
+  MACD,
+  Stochastic,
+  ADX,
+  WilliamsR,
+  OBV,
+  CCI,
+  ROC,
+  MOM,
+  UltimateOscillator
+} = require('technicalindicators');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep the port open
+// Keep the port alive
 app.get('/', (req, res) => {
   res.send('Mr Ronaldo\'s Crypto Bot is alive and watching the markets.');
 });
+
 app.listen(PORT, () => {
   console.log(`HTTP server listening on port ${PORT}`);
 });
 
-// Global error handlers for debugging
+// Global error logging for uncaught exceptions & rejections
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });
@@ -23,7 +38,7 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
 
-// Telegram Bot initialization
+// Initialize Telegram Bot with polling
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 const SYMBOL_MAP = {
@@ -73,33 +88,33 @@ function calculateIndicators(candles) {
   const lows = candles.map(c => c.low);
   const volumes = candles.map(c => c.volume);
 
-  return {
-    sma: technicalIndicators.SMA.calculate({ period: 14, values: closes }),
-    ema: technicalIndicators.EMA.calculate({ period: 14, values: closes }),
-    rsi: technicalIndicators.RSI.calculate({ period: 14, values: closes }),
-    macd: technicalIndicators.MACD.calculate({
-      values: closes,
-      fastPeriod: 12,
-      slowPeriod: 26,
-      signalPeriod: 9,
-      SimpleMAOscillator: false,
-      SimpleMASignal: false
-    }),
-    stochastic: technicalIndicators.Stochastic.calculate({
-      high: highs,
-      low: lows,
-      close: closes,
-      period: 14,
-      signalPeriod: 3
-    }),
-    adx: technicalIndicators.ADX.calculate({ high: highs, low: lows, close: closes, period: 14 }),
-    williamsR: technicalIndicators.WilliamsR.calculate({ high: highs, low: lows, close: closes, period: 14 }),
-    obv: technicalIndicators.OBV.calculate({ close: closes, volume: volumes }),
-    cci: technicalIndicators.CCI.calculate({ high: highs, low: lows, close: closes, period: 20 }),
-    roc: technicalIndicators.ROC.calculate({ period: 12, values: closes }),
-    momentum: technicalIndicators.MOM.calculate({ period: 10, values: closes }),
-    ultosc: technicalIndicators.UltimateOscillator.calculate({ high: highs, low: lows, close: closes })
-  };
+  const sma = SMA.calculate({ period: 14, values: closes });
+  const ema = EMA.calculate({ period: 14, values: closes });
+  const rsi = RSI.calculate({ period: 14, values: closes });
+  const macd = MACD.calculate({
+    values: closes,
+    fastPeriod: 12,
+    slowPeriod: 26,
+    signalPeriod: 9,
+    SimpleMAOscillator: false,
+    SimpleMASignal: false
+  });
+  const stochastic = Stochastic.calculate({
+    high: highs,
+    low: lows,
+    close: closes,
+    period: 14,
+    signalPeriod: 3
+  });
+  const adx = ADX.calculate({ high: highs, low: lows, close: closes, period: 14 });
+  const williamsR = WilliamsR.calculate({ high: highs, low: lows, close: closes, period: 14 });
+  const obv = OBV.calculate({ close: closes, volume: volumes });
+  const cci = CCI.calculate({ high: highs, low: lows, close: closes, period: 20 });
+  const roc = ROC.calculate({ period: 12, values: closes });
+  const momentum = MOM.calculate({ period: 10, values: closes });
+  const ultosc = UltimateOscillator.calculate({ high: highs, low: lows, close: closes });
+
+  return { sma, ema, rsi, macd, stochastic, adx, williamsR, obv, cci, roc, momentum, ultosc };
 }
 
 function detectTrend(candles) {
