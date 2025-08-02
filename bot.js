@@ -7,16 +7,23 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Minimal HTTP server to keep a port open
+// Keep the port open
 app.get('/', (req, res) => {
   res.send('Mr Ronaldo\'s Crypto Bot is alive and watching the markets.');
 });
-
 app.listen(PORT, () => {
   console.log(`HTTP server listening on port ${PORT}`);
 });
 
-// Telegram Bot setup
+// Global error handlers for debugging
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+// Telegram Bot initialization
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 const SYMBOL_MAP = {
@@ -37,13 +44,15 @@ const TIMEFRAMES = {
   '24h': '1d'
 };
 
-const getCandles = async (symbol, interval, limit = 100) => {
+async function getCandles(symbol, interval, limit = 100) {
   try {
+    console.log(`Fetching candles for ${symbol} at interval ${interval}...`);
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
     const response = await axios.get(url);
     if (!Array.isArray(response.data) || response.data.length === 0) {
       throw new Error('Empty candle data received from Binance API');
     }
+    console.log(`Fetched ${response.data.length} candles.`);
     return response.data.map(c => ({
       time: c[0],
       open: parseFloat(c[1]),
@@ -53,11 +62,12 @@ const getCandles = async (symbol, interval, limit = 100) => {
       volume: parseFloat(c[5])
     }));
   } catch (error) {
-    throw new Error('Failed to fetch candles: ' + error.message);
+    console.error('Error in getCandles:', error.message);
+    throw error;
   }
-};
+}
 
-const calculateIndicators = (candles) => {
+function calculateIndicators(candles) {
   const closes = candles.map(c => c.close);
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
@@ -90,17 +100,17 @@ const calculateIndicators = (candles) => {
     momentum: technicalIndicators.MOM.calculate({ period: 10, values: closes }),
     ultosc: technicalIndicators.UltimateOscillator.calculate({ high: highs, low: lows, close: closes })
   };
-};
+}
 
-const detectTrend = (candles) => {
+function detectTrend(candles) {
   const first = candles[0].close;
   const last = candles[candles.length - 1].close;
   const change = ((last - first) / first) * 100;
   const direction = change > 0 ? 'Bullish 🟢' : 'Bearish 🔴';
   return { direction, change: change.toFixed(2) + '%' };
-};
+}
 
-const calculateAccuracy = (candles) => {
+function calculateAccuracy(candles) {
   let correct = 0;
   for (let i = 2; i < candles.length; i++) {
     const pred = candles[i - 1].close > candles[i - 2].close ? 'up' : 'down';
@@ -108,18 +118,18 @@ const calculateAccuracy = (candles) => {
     if (pred === actual) correct++;
   }
   return ((correct / (candles.length - 2)) * 100).toFixed(2);
-};
+}
 
-const calculateSupportResistance = (candles) => {
+function calculateSupportResistance(candles) {
   const recent = candles.slice(-10);
   const lows = recent.map(c => c.low);
   const highs = recent.map(c => c.high);
   const support = Math.min(...lows);
   const resistance = Math.max(...highs);
   return { support: support.toFixed(2), resistance: resistance.toFixed(2) };
-};
+}
 
-const getFearGreedIndex = async () => {
+async function getFearGreedIndex() {
   try {
     const response = await axios.get('https://api.alternative.me/fng/?limit=1');
     const value = response.data.data[0];
@@ -127,7 +137,7 @@ const getFearGreedIndex = async () => {
   } catch {
     return 'Unavailable';
   }
-};
+}
 
 bot.onText(/\/(eth|btc|link|trx|bnb)(15m|30m|1h|4h|6h|12h|24h)/i, async (msg, match) => {
   const chatId = msg.chat.id;
