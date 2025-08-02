@@ -1,7 +1,7 @@
 {
-  "name": "crypto-bot-eth-bnb",
+  "name": "crypto-bot",
   "version": "1.0.0",
-  "description": "Crypto Trend Signal Bot with Indicators and Fear & Greed Index",
+  "description": "Telegram bot for crypto trend signals with technical indicators and open port for hosting.",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
@@ -9,7 +9,8 @@
   "dependencies": {
     "axios": "^1.6.8",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "node-telegram-bot-api": "^0.61.0",
-    "technicalindicators": "^3.1.0"
+    "technicalindicators": "^3.0.2"
   }
 }
