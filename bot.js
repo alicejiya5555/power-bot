@@ -1,9 +1,22 @@
-// Updated bot.js with real-time Binance API, full indicator calculation, and real-time support/resistance & Fear & Greed Index
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const technicalIndicators = require('technicalindicators');
+const express = require('express');
 
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Minimal HTTP server to keep a port open
+app.get('/', (req, res) => {
+  res.send('Mr Ronaldo\'s Crypto Bot is alive and watching the markets.');
+});
+
+app.listen(PORT, () => {
+  console.log(`HTTP server listening on port ${PORT}`);
+});
+
+// Telegram Bot setup
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 const SYMBOL_MAP = {
