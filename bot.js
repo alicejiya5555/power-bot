@@ -38,16 +38,23 @@ const TIMEFRAMES = {
 };
 
 const getCandles = async (symbol, interval, limit = 100) => {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-  const response = await axios.get(url);
-  return response.data.map(c => ({
-    time: c[0],
-    open: parseFloat(c[1]),
-    high: parseFloat(c[2]),
-    low: parseFloat(c[3]),
-    close: parseFloat(c[4]),
-    volume: parseFloat(c[5])
-  }));
+  try {
+    const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+    const response = await axios.get(url);
+    if (!Array.isArray(response.data) || response.data.length === 0) {
+      throw new Error('Empty candle data received from Binance API');
+    }
+    return response.data.map(c => ({
+      time: c[0],
+      open: parseFloat(c[1]),
+      high: parseFloat(c[2]),
+      low: parseFloat(c[3]),
+      close: parseFloat(c[4]),
+      volume: parseFloat(c[5])
+    }));
+  } catch (error) {
+    throw new Error('Failed to fetch candles: ' + error.message);
+  }
 };
 
 const calculateIndicators = (candles) => {
@@ -56,33 +63,33 @@ const calculateIndicators = (candles) => {
   const lows = candles.map(c => c.low);
   const volumes = candles.map(c => c.volume);
 
-  const sma = technicalIndicators.SMA.calculate({ period: 14, values: closes });
-  const ema = technicalIndicators.EMA.calculate({ period: 14, values: closes });
-  const rsi = technicalIndicators.RSI.calculate({ period: 14, values: closes });
-  const macd = technicalIndicators.MACD.calculate({
-    values: closes,
-    fastPeriod: 12,
-    slowPeriod: 26,
-    signalPeriod: 9,
-    SimpleMAOscillator: false,
-    SimpleMASignal: false
-  });
-  const stochastic = technicalIndicators.Stochastic.calculate({
-    high: highs,
-    low: lows,
-    close: closes,
-    period: 14,
-    signalPeriod: 3
-  });
-  const adx = technicalIndicators.ADX.calculate({ high: highs, low: lows, close: closes, period: 14 });
-  const williamsR = technicalIndicators.WilliamsR.calculate({ high: highs, low: lows, close: closes, period: 14 });
-  const obv = technicalIndicators.OBV.calculate({ close: closes, volume: volumes });
-  const cci = technicalIndicators.CCI.calculate({ high: highs, low: lows, close: closes, period: 20 });
-  const roc = technicalIndicators.ROC.calculate({ period: 12, values: closes });
-  const momentum = technicalIndicators.MOM.calculate({ period: 10, values: closes });
-  const ultosc = technicalIndicators.UltimateOscillator.calculate({ high: highs, low: lows, close: closes });
-
-  return { sma, ema, rsi, macd, stochastic, adx, williamsR, obv, cci, roc, momentum, ultosc };
+  return {
+    sma: technicalIndicators.SMA.calculate({ period: 14, values: closes }),
+    ema: technicalIndicators.EMA.calculate({ period: 14, values: closes }),
+    rsi: technicalIndicators.RSI.calculate({ period: 14, values: closes }),
+    macd: technicalIndicators.MACD.calculate({
+      values: closes,
+      fastPeriod: 12,
+      slowPeriod: 26,
+      signalPeriod: 9,
+      SimpleMAOscillator: false,
+      SimpleMASignal: false
+    }),
+    stochastic: technicalIndicators.Stochastic.calculate({
+      high: highs,
+      low: lows,
+      close: closes,
+      period: 14,
+      signalPeriod: 3
+    }),
+    adx: technicalIndicators.ADX.calculate({ high: highs, low: lows, close: closes, period: 14 }),
+    williamsR: technicalIndicators.WilliamsR.calculate({ high: highs, low: lows, close: closes, period: 14 }),
+    obv: technicalIndicators.OBV.calculate({ close: closes, volume: volumes }),
+    cci: technicalIndicators.CCI.calculate({ high: highs, low: lows, close: closes, period: 20 }),
+    roc: technicalIndicators.ROC.calculate({ period: 12, values: closes }),
+    momentum: technicalIndicators.MOM.calculate({ period: 10, values: closes }),
+    ultosc: technicalIndicators.UltimateOscillator.calculate({ high: highs, low: lows, close: closes })
+  };
 };
 
 const detectTrend = (candles) => {
@@ -117,7 +124,7 @@ const getFearGreedIndex = async () => {
     const response = await axios.get('https://api.alternative.me/fng/?limit=1');
     const value = response.data.data[0];
     return `${value.value} (${value.value_classification})`;
-  } catch (err) {
+  } catch {
     return 'Unavailable';
   }
 };
@@ -126,11 +133,23 @@ bot.onText(/\/(eth|btc|link|trx|bnb)(15m|30m|1h|4h|6h|12h|24h)/i, async (msg, ma
   const chatId = msg.chat.id;
   const symbolKey = match[1].toLowerCase();
   const timeframeKey = match[2];
+
+  if (!Object.keys(TIMEFRAMES).includes(timeframeKey)) {
+    bot.sendMessage(chatId, 'Invalid timeframe. Use one of: 15m, 30m, 1h, 4h, 6h, 12h, 24h.');
+    return;
+  }
+
   const symbol = SYMBOL_MAP[symbolKey];
   const interval = TIMEFRAMES[timeframeKey];
 
   try {
     const candles = await getCandles(symbol, interval);
+
+    if (!candles || candles.length === 0) {
+      bot.sendMessage(chatId, 'No candle data available for this symbol/timeframe.');
+      return;
+    }
+
     const indicators = calculateIndicators(candles);
     const trend = detectTrend(candles);
     const accuracy = calculateAccuracy(candles);
@@ -154,8 +173,9 @@ bot.onText(/\/(eth|btc|link|trx|bnb)(15m|30m|1h|4h|6h|12h|24h)/i, async (msg, ma
 🤖 Bot by Mr Ronaldo`;
 
     bot.sendMessage(chatId, message);
+
   } catch (err) {
-    console.error(err);
-    bot.sendMessage(chatId, 'Error fetching data or calculating indicators.');
+    console.error('Error details:', err.response ? err.response.data : err.message || err);
+    bot.sendMessage(chatId, 'Error fetching data or calculating indicators. Check logs for details.');
   }
 });
