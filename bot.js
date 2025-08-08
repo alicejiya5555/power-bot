@@ -23,7 +23,6 @@ app.listen(PORT, () => {
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });
-
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
@@ -32,7 +31,7 @@ process.on('uncaughtException', (error) => {
 const bot = new TelegramBot(process.env.BOT_TOKEN, { 
   polling: true,
   request: {
-    timeout: 60000 // Increase timeout to 60 seconds
+    timeout: 60000
   }
 });
 
@@ -64,9 +63,10 @@ async function getCandles(symbol, interval, limit = 100, retries = 3) {
   const cacheKey = `${symbol}-${interval}`;
   
   // Check cache first
-  if (cache.has(cacheKey) {
+  if (cache.has(cacheKey)) {
     const { timestamp, data } = cache.get(cacheKey);
     if (Date.now() - timestamp < CACHE_TTL) {
+      console.log('Returning cached data for', cacheKey);
       return data;
     }
   }
@@ -92,12 +92,14 @@ async function getCandles(symbol, interval, limit = 100, retries = 3) {
 
       // Update cache
       cache.set(cacheKey, { timestamp: Date.now(), data: candles });
+      console.log(`Successfully fetched ${candles.length} candles for ${symbol}`);
       
       return candles;
     } catch (error) {
+      console.error(`Attempt ${attempt} failed:`, error.message);
       if (attempt === retries) {
         console.error(`Failed after ${retries} attempts:`, error.message);
-        throw error;
+        throw new Error(`Failed to fetch candles after ${retries} attempts: ${error.message}`);
       }
       
       // Exponential backoff
@@ -110,7 +112,7 @@ async function getCandles(symbol, interval, limit = 100, retries = 3) {
 function calculateIndicators(candles) {
   try {
     if (!candles || candles.length < 50) {
-      throw new Error('Insufficient candle data for accurate indicators');
+      throw new Error('Insufficient candle data (need at least 50 candles)');
     }
 
     const closes = candles.map(c => c.close);
@@ -124,40 +126,99 @@ function calculateIndicators(candles) {
       ema: EMA.calculate({ period: 14, values: closes }).slice(-1)[0]?.toFixed(4) || 'N/A',
       rsi: RSI.calculate({ period: 14, values: closes }).slice(-1)[0]?.toFixed(2) || 'N/A',
       macd: (() => {
-        const macd = MACD.calculate({
-          values: closes,
-          fastPeriod: 12,
-          slowPeriod: 26,
-          signalPeriod: 9,
-          SimpleMAOscillator: false,
-          SimpleMASignal: false
-        });
-        const last = macd.slice(-1)[0];
-        return last ? `${last.MACD.toFixed(4)}/${last.signal.toFixed(4)}` : 'N/A/N/A';
+        try {
+          const macd = MACD.calculate({
+            values: closes,
+            fastPeriod: 12,
+            slowPeriod: 26,
+            signalPeriod: 9,
+            SimpleMAOscillator: false,
+            SimpleMASignal: false
+          });
+          const last = macd.slice(-1)[0];
+          return last ? `${last.MACD.toFixed(4)}/${last.signal.toFixed(4)}` : 'N/A/N/A';
+        } catch (e) {
+          console.error('MACD calculation error:', e.message);
+          return 'Error';
+        }
       })(),
       stochastic: (() => {
-        const stoch = Stochastic.calculate({
-          high: highs,
-          low: lows,
-          close: closes,
-          period: 14,
-          signalPeriod: 3
-        });
-        const last = stoch.slice(-1)[0];
-        return last ? `${last.k.toFixed(2)}/${last.d.toFixed(2)}` : 'N/A/N/A';
+        try {
+          const stoch = Stochastic.calculate({
+            high: highs,
+            low: lows,
+            close: closes,
+            period: 14,
+            signalPeriod: 3
+          });
+          const last = stoch.slice(-1)[0];
+          return last ? `${last.k.toFixed(2)}/${last.d.toFixed(2)}` : 'N/A/N/A';
+        } catch (e) {
+          console.error('Stochastic calculation error:', e.message);
+          return 'Error';
+        }
       })(),
-      adx: ADX.calculate({ high: highs, low: lows, close: closes, period: 14 }).slice(-1)[0]?.toFixed(2) || 'N/A',
-      williamsR: WilliamsR.calculate({ high: highs, low: lows, close: closes, period: 14 }).slice(-1)[0]?.toFixed(2) || 'N/A',
-      obv: OBV.calculate({ close: closes, volume: volumes }).slice(-1)[0]?.toFixed(2) || 'N/A',
-      cci: CCI.calculate({ high: highs, low: lows, close: closes, period: 20 }).slice(-1)[0]?.toFixed(2) || 'N/A',
-      roc: ROC.calculate({ period: 12, values: closes }).slice(-1)[0]?.toFixed(2) || 'N/A',
-      momentum: MOM.calculate({ period: 10, values: closes }).slice(-1)[0]?.toFixed(2) || 'N/A',
-      ultosc: UltimateOscillator.calculate({ high: highs, low: lows, close: closes }).slice(-1)[0]?.toFixed(2) || 'N/A'
+      adx: (() => {
+        try {
+          return ADX.calculate({ high: highs, low: lows, close: closes, period: 14 }).slice(-1)[0]?.toFixed(2) || 'N/A';
+        } catch (e) {
+          console.error('ADX calculation error:', e.message);
+          return 'Error';
+        }
+      })(),
+      williamsR: (() => {
+        try {
+          return WilliamsR.calculate({ high: highs, low: lows, close: closes, period: 14 }).slice(-1)[0]?.toFixed(2) || 'N/A';
+        } catch (e) {
+          console.error('WilliamsR calculation error:', e.message);
+          return 'Error';
+        }
+      })(),
+      obv: (() => {
+        try {
+          return OBV.calculate({ close: closes, volume: volumes }).slice(-1)[0]?.toFixed(2) || 'N/A';
+        } catch (e) {
+          console.error('OBV calculation error:', e.message);
+          return 'Error';
+        }
+      })(),
+      cci: (() => {
+        try {
+          return CCI.calculate({ high: highs, low: lows, close: closes, period: 20 }).slice(-1)[0]?.toFixed(2) || 'N/A';
+        } catch (e) {
+          console.error('CCI calculation error:', e.message);
+          return 'Error';
+        }
+      })(),
+      roc: (() => {
+        try {
+          return ROC.calculate({ period: 12, values: closes }).slice(-1)[0]?.toFixed(2) || 'N/A';
+        } catch (e) {
+          console.error('ROC calculation error:', e.message);
+          return 'Error';
+        }
+      })(),
+      momentum: (() => {
+        try {
+          return MOM.calculate({ period: 10, values: closes }).slice(-1)[0]?.toFixed(2) || 'N/A';
+        } catch (e) {
+          console.error('Momentum calculation error:', e.message);
+          return 'Error';
+        }
+      })(),
+      ultosc: (() => {
+        try {
+          return UltimateOscillator.calculate({ high: highs, low: lows, close: closes }).slice(-1)[0]?.toFixed(2) || 'N/A';
+        } catch (e) {
+          console.error('UltimateOscillator calculation error:', e.message);
+          return 'Error';
+        }
+      })()
     };
 
     return indicators;
   } catch (error) {
-    console.error('Error calculating indicators:', error);
+    console.error('Error in calculateIndicators:', error.message);
     throw error;
   }
 }
@@ -174,7 +235,7 @@ function detectTrend(candles) {
     const direction = change > 0 ? 'Bullish 🟢' : 'Bearish 🔴';
     return { direction, change: change.toFixed(2) + '%' };
   } catch (error) {
-    console.error('Error detecting trend:', error);
+    console.error('Error in detectTrend:', error.message);
     return { direction: 'Error', change: 'N/A' };
   }
 }
@@ -191,7 +252,7 @@ function calculateAccuracy(candles) {
     }
     return ((correct / (candles.length - 2)) * 100).toFixed(2) + '%';
   } catch (error) {
-    console.error('Error calculating accuracy:', error);
+    console.error('Error in calculateAccuracy:', error.message);
     return 'N/A';
   }
 }
@@ -209,7 +270,7 @@ function calculateSupportResistance(candles) {
     const resistance = Math.max(...highs);
     return { support: support.toFixed(4), resistance: resistance.toFixed(4) };
   } catch (error) {
-    console.error('Error calculating support/resistance:', error);
+    console.error('Error in calculateSupportResistance:', error.message);
     return { support: 'N/A', resistance: 'N/A' };
   }
 }
@@ -221,8 +282,8 @@ async function getFearGreedIndex(retries = 2) {
       const value = response.data.data[0];
       return `${value.value} (${value.value_classification})`;
     } catch (error) {
+      console.error(`Attempt ${attempt} failed for Fear & Greed Index:`, error.message);
       if (attempt === retries) {
-        console.error('Failed to fetch Fear & Greed Index:', error.message);
         return 'Unavailable';
       }
       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
@@ -267,7 +328,7 @@ bot.onText(/\/(eth|btc|link|trx|bnb)(15m|30m|1h|4h|6h|12h|24h)/i, async (msg, ma
     ]);
 
     if (!candles || candles.length < 20) {
-      await bot.editMessageText('Insufficient data available for analysis.', {
+      await bot.editMessageText('❌ Insufficient data available for analysis. Please try a different timeframe.', {
         chat_id: chatId,
         message_id: processingMsg.message_id
       });
@@ -317,12 +378,12 @@ bot.onText(/\/(eth|btc|link|trx|bnb)(15m|30m|1h|4h|6h|12h|24h)/i, async (msg, ma
     });
 
   } catch (error) {
-    console.error('Full error:', error);
-    const errorMsg = error.response 
-      ? `API Error: ${error.response.status} - ${error.response.statusText}`
-      : `Error: ${error.message || 'Unknown error occurred'}`;
+    console.error('Full error in command handler:', error);
+    const errorDetails = error.response 
+      ? `API Error: ${error.response.status} ${error.response.statusText}`
+      : error.message || 'Unknown error';
 
-    bot.sendMessage(chatId, `❌ Failed to process your request. ${errorMsg}\n\nPlease try again later.`);
+    bot.sendMessage(chatId, `❌ Error processing your request: ${errorDetails}\n\nPlease try again later.`);
   }
 });
 
@@ -351,3 +412,5 @@ Example: /eth1h for Ethereum 1-hour analysis
 
   bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'Markdown' });
 });
+
+console.log('Bot is running and waiting for commands...');
