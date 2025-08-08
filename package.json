@@ -1,16 +1,33 @@
 {
-  "name": "crypto-bot",
+  "name": "crypto-analysis-bot",
   "version": "1.0.0",
-  "description": "Telegram bot for crypto trend signals with technical indicators and open port for hosting.",
+  "description": "Telegram bot for crypto technical analysis",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot.js",
+    "dev": "nodemon bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [
+    "telegram",
+    "bot",
+    "crypto",
+    "trading",
+    "analysis"
+  ],
+  "author": "Mr Ronaldo",
+  "license": "ISC",
   "dependencies": {
-    "axios": "^1.6.8",
+    "axios": "^1.6.2",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "node-telegram-bot-api": "^0.61.0",
-    "technicalindicators": "^3.0.2"
+    "technicalindicators": "^3.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
